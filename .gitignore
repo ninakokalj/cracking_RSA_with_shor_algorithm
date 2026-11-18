@@ -1,0 +1,19 @@
+/practise/
+
+# python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# virtual environments
+.venv/
+venv/
+
+# local environment
+.env
+.env.*
+!.env.example
+
+# system files
+.DS_Store
+Thumbs.db

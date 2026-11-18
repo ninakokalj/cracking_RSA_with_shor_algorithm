@@ -1,0 +1,14 @@
+{
+  "N": 15,
+  "a": 4,
+  "counting_qubits": 4,
+  "work_qubits": 4,
+  "shots": 4096,
+  "simulator": "ideal",
+  "seed_simulator": 0,
+  "counts": {
+    "0000": 2070,
+    "1000": 2026
+  },
+  "keygen_seed": 0
+}
