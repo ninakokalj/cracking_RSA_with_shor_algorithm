@@ -1,19 +1,28 @@
-/practise/
-
-# python cache
-__pycache__/
-*.py[cod]
-.pytest_cache/
-
-# virtual environments
+# Virtual environment
 .venv/
 venv/
 
-# local environment
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment variables and secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
 
-# system files
-.DS_Store
-Thumbs.db
+# Temporary experiments
+scratch/
+
+# Temporary files
+*.log
+*.tmp

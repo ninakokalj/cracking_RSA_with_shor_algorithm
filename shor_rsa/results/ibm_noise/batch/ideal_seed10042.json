@@ -1,0 +1,23 @@
+{
+  "backend": "fake_brisbane",
+  "calibration_date": "2025-02-26T14:33:06-05:00",
+  "experiment": "ideal",
+  "N": 15,
+  "a": 2,
+  "counting_qubits": 4,
+  "shots": 512,
+  "seed": 10042,
+  "optimization_level": 2,
+  "seed_transpiler": 42,
+  "simulation_method": "matrix_product_state",
+  "circuit_depth": 3607,
+  "ecr_gates": 700,
+  "peak_fraction": 1.0,
+  "useful_fraction": 0.490234375,
+  "counts": {
+    "1100": 122,
+    "1000": 116,
+    "0000": 145,
+    "0100": 129
+  }
+}

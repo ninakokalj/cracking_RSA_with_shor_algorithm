@@ -1,7 +1,7 @@
 from qiskit import transpile
 from qiskit_aer import AerSimulator
 
-from shor_circuit import create_shor_circuit
+from ...shor_circuit import create_shor_circuit
 
 
 N = 21

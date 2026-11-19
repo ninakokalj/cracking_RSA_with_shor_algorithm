@@ -3,7 +3,7 @@ from math import pi, gcd
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
 from qiskit_aer import AerSimulator
 
-from modular_gate import modular_multiplication_gate
+from .modular_gate import modular_multiplication_gate
 
 
 # inverse qft

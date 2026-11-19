@@ -1,0 +1,27 @@
+{
+  "backend": "fake_brisbane",
+  "calibration_date": "2025-02-26T14:33:06-05:00",
+  "experiment": "ibm_noise",
+  "N": 15,
+  "a": 2,
+  "shots_per_seed": 512,
+  "seeds": [
+    42,
+    10042,
+    20042
+  ],
+  "mean_peak_fraction": 0.7141927083333334,
+  "mean_useful_fraction": 0.294921875,
+  "std_useful_fraction": 0.012197261715621872,
+  "expected_shots": 3.390728476821192,
+  "peak_fractions": [
+    0.71484375,
+    0.734375,
+    0.693359375
+  ],
+  "useful_fractions": [
+    0.30859375,
+    0.28515625,
+    0.291015625
+  ]
+}

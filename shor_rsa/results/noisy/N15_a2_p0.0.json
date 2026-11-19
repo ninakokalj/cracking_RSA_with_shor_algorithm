@@ -1,0 +1,17 @@
+{
+  "N": 15,
+  "a": 2,
+  "counting_qubits": 4,
+  "shots": 512,
+  "seed": 42,
+  "cx_error_probability": 0.0,
+  "circuit_depth": 925,
+  "cx_gates": 489,
+  "peak_fraction": 1.0,
+  "counts": {
+    "1000": 120,
+    "0000": 138,
+    "1100": 139,
+    "0100": 115
+  }
+}

@@ -4,14 +4,14 @@ from pathlib import Path
 from qiskit import transpile
 from qiskit_aer import AerSimulator
 
-from shor_circuit import create_shor_circuit
+from ..shor_circuit import create_shor_circuit
 
 
 # config
 
-ROOT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = Path(__file__).resolve().parents[1]
 
-EXPERIMENTS_FILE = ROOT_DIR / "data" / "experiments.json"
+EXPERIMENTS_FILE = ROOT_DIR.parent / "data" / "experiments.json"
 
 RESULTS_DIR = ROOT_DIR / "results" / "ideal"
 

@@ -4,15 +4,16 @@ from time import perf_counter
 
 from qiskit import transpile
 
-from shor_circuit import create_shor_circuit
+from ..shor_circuit import create_shor_circuit
 
 
-ROOT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = Path(__file__).resolve().parents[1]
+
 RESULTS_DIR = ROOT_DIR / "results" / "circuit_analysis"
 
 # small test case
-N = 15
-a = 2
+N = 65
+a = 12
 COUNTING_QUBITS = 4
 
 SEED = 0

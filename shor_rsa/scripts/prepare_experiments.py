@@ -4,7 +4,7 @@ from pathlib import Path
 from math import gcd
 
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 # bases to test for each N
 BASES_PER_N = 2

@@ -1,0 +1,36 @@
+{
+  "N": 65,
+  "a": 14,
+  "counting_qubits": 4,
+  "basis_gates": [
+    "u",
+    "cx"
+  ],
+  "optimization_level": 0,
+  "before": {
+    "qubits": 11,
+    "depth": 11,
+    "two_qubit_gates": 8,
+    "multi_qubit_gates": 1,
+    "operations": {
+      "h": 8,
+      "cp": 6,
+      "measure": 4,
+      "swap": 2,
+      "x": 1,
+      "c-unitary": 1
+    }
+  },
+  "after": {
+    "qubits": 11,
+    "depth": 33232,
+    "two_qubit_gates": 16830,
+    "multi_qubit_gates": 0,
+    "operations": {
+      "u": 29754,
+      "cx": 16830,
+      "measure": 4
+    }
+  },
+  "translation_time_seconds": 1.4363725000293925
+}
