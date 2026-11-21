@@ -5,7 +5,7 @@ from qiskit import transpile
 from qiskit.quantum_info import Operator
 from qiskit_aer import AerSimulator
 
-from ..modular_gate import modular_multiplication_gate
+from ..arithmetic.modular_gate import modular_multiplication_gate
 from ..shor_circuit import create_shor_circuit
 
 

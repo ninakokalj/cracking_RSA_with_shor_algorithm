@@ -1,0 +1,20 @@
+{
+  "N": 15,
+  "a": 2,
+  "counting_qubits": 4,
+  "multiplier": "binary",
+  "shots": 512,
+  "seed": 10042,
+  "cx_error_probability": 0.0,
+  "circuit": {
+    "qubits": 16,
+    "depth": 21882,
+    "two_qubit_gates": 12598
+  },
+  "counts": {
+    "0000": 145,
+    "0100": 129,
+    "1000": 116,
+    "1100": 122
+  }
+}

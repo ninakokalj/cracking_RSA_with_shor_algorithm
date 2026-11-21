@@ -1,0 +1,23 @@
+{
+  "N": 15,
+  "a": 2,
+  "counting_qubits": 8,
+  "work_qubits": 4,
+  "multiplier": "binary",
+  "shots": 4096,
+  "simulator": "ideal",
+  "simulation_method": "matrix_product_state",
+  "seed_simulator": 0,
+  "circuit": {
+    "qubits": 20,
+    "depth": 21887,
+    "two_qubit_gates": 12648
+  },
+  "counts": {
+    "00000000": 1025,
+    "01000000": 1035,
+    "10000000": 1043,
+    "11000000": 993
+  },
+  "keygen_seed": 0
+}

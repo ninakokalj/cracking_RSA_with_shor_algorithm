@@ -1,55 +1,128 @@
 {
   "keygen_seed": 0,
+  "base_seed": 0,
   "total_keys": 20,
-  "unique_N": 6,
+  "unique_N": 8,
   "experiments": [
     {
       "N": 15,
-      "a": 2
+      "a": 2,
+      "counting_qubits": 8
     },
     {
       "N": 15,
-      "a": 4
+      "a": 8,
+      "counting_qubits": 8
+    },
+    {
+      "N": 15,
+      "a": 13,
+      "counting_qubits": 8
     },
     {
       "N": 21,
-      "a": 2
+      "a": 10,
+      "counting_qubits": 10
     },
     {
       "N": 21,
-      "a": 4
+      "a": 16,
+      "counting_qubits": 10
+    },
+    {
+      "N": 21,
+      "a": 17,
+      "counting_qubits": 10
+    },
+    {
+      "N": 33,
+      "a": 17,
+      "counting_qubits": 12
+    },
+    {
+      "N": 33,
+      "a": 23,
+      "counting_qubits": 12
+    },
+    {
+      "N": 33,
+      "a": 28,
+      "counting_qubits": 12
     },
     {
       "N": 35,
-      "a": 2
+      "a": 11,
+      "counting_qubits": 12
     },
     {
       "N": 35,
-      "a": 3
+      "a": 18,
+      "counting_qubits": 12
+    },
+    {
+      "N": 35,
+      "a": 29,
+      "counting_qubits": 12
     },
     {
       "N": 39,
-      "a": 2
+      "a": 8,
+      "counting_qubits": 12
     },
     {
       "N": 39,
-      "a": 4
+      "a": 17,
+      "counting_qubits": 12
+    },
+    {
+      "N": 39,
+      "a": 29,
+      "counting_qubits": 12
+    },
+    {
+      "N": 51,
+      "a": 7,
+      "counting_qubits": 12
+    },
+    {
+      "N": 51,
+      "a": 8,
+      "counting_qubits": 12
+    },
+    {
+      "N": 51,
+      "a": 41,
+      "counting_qubits": 12
     },
     {
       "N": 55,
-      "a": 2
+      "a": 14,
+      "counting_qubits": 12
     },
     {
       "N": 55,
-      "a": 3
+      "a": 24,
+      "counting_qubits": 12
+    },
+    {
+      "N": 55,
+      "a": 49,
+      "counting_qubits": 12
     },
     {
       "N": 57,
-      "a": 2
+      "a": 8,
+      "counting_qubits": 12
     },
     {
       "N": 57,
-      "a": 4
+      "a": 11,
+      "counting_qubits": 12
+    },
+    {
+      "N": 57,
+      "a": 32,
+      "counting_qubits": 12
     }
   ]
 }

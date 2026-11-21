@@ -1,4 +1,5 @@
 import json
+import random
 
 from pathlib import Path
 from math import gcd
@@ -7,7 +8,10 @@ from math import gcd
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 # bases to test for each N
-BASES_PER_N = 2
+BASES_PER_N = 3
+
+# Shor picks a at random, so we do too (fixed seed for reproducibility)
+BASE_SEED = 0
 
 
 def load_keys():
@@ -35,20 +39,20 @@ def load_keys():
     return all_keys, seeds.pop()
 
 
-def select_bases(N, count=2):
+def select_bases(N, count, rng):
 
-    bases = []
+    # a must be coprime to N (otherwise gcd(a, N) already gives a factor)
+    candidates = [a for a in range(2, N - 1) if gcd(a, N) == 1]
 
-    for a in range(2, N):
+    # random choice, not "the first ones": some bases have an odd period or
+    # a^(r/2) = -1 mod N and always fail, and that failure rate is part of Shor's cost
+    return sorted(rng.sample(candidates, min(count, len(candidates))))
 
-        # a must be coprime to N
-        if gcd(a, N) == 1:
-            bases.append(a)
 
-        if len(bases) == count:
-            break
+def counting_qubits(N):
 
-    return bases
+    # 2n counting qubits give enough precision for any period (n = bits of N)
+    return 2 * (N - 1).bit_length()
 
 
 def prepare_experiments():
@@ -60,20 +64,24 @@ def prepare_experiments():
 
     experiments = []
 
+    rng = random.Random(BASE_SEED)
+
     for N in unique_N:
 
-        bases = select_bases(N, BASES_PER_N)
+        bases = select_bases(N, BASES_PER_N, rng)
 
         for a in bases:
 
             experiments.append({
                 "N": N,
-                "a": a
+                "a": a,
+                "counting_qubits": counting_qubits(N)
             })
 
     # save data
     output = {
         "keygen_seed": seed,
+        "base_seed": BASE_SEED,
         "total_keys": len(keys),
         "unique_N": len(unique_N),
         "experiments": experiments
@@ -93,7 +101,8 @@ def prepare_experiments():
     for experiment in experiments:
         print(
             f"N = {experiment['N']}, "
-            f"a = {experiment['a']}"
+            f"a = {experiment['a']}, "
+            f"t = {experiment['counting_qubits']}"
         )
 
 

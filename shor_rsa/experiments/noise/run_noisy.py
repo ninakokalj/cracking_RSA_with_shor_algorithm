@@ -7,49 +7,62 @@ from qiskit import transpile
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, depolarizing_error
 
+from classical.postprocess import analyse_counts, load_keys
 from ...shor_circuit import create_shor_circuit
 
+
+# Shor for N = 15 with depolarizing noise on every two-qubit gate.
+# Question: how does the success per shot p_s fall as the gate error rate grows?
+# Expected: p_s - baseline ~ (p_ideal - baseline) * exp(-eps * G), G = two-qubit gates.
 
 N = 15
 a = 2
 
+# period 4 divides 2^4, so 4 counting qubits already give the exact phases
 COUNTING_QUBITS = 4
-SHOTS = 4096
+MULTIPLIER = "binary"
 
+SHOTS = 512
 SEEDS = [42, 10042, 20042]
 
-NOISE_LEVELS = [0.0, 0.001, 0.005, 0.01]
+# about 12 500 two-qubit gates, so the interesting range is eps ~ 1 / 12 500
+# by 3e-3 the quantum signal is gone (p_s at the pure-noise level); higher rates add
+# nothing and are slow to simulate (more errors make the simulation state larger)
+NOISE_LEVELS = [0.0, 1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 3e-3]
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = ROOT_DIR / "results" / "noisy" / "batch"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-IDEAL_PEAKS = {"0000", "0100", "1000", "1100"}
-USEFUL_PHASES = {"0100", "1100"}
-
 
 qc = create_shor_circuit(
     N,
     a,
-    counting_qubits=COUNTING_QUBITS
+    counting_qubits=COUNTING_QUBITS,
+    multiplier=MULTIPLIER
 )
 
 # reuse the transpiled circuit for all simulations
 compiled = transpile(
     qc,
     basis_gates=["u", "cx"],
-    optimization_level=0,
+    optimization_level=1,
     seed_transpiler=42
 )
 
+two_qubit_gates = compiled.count_ops().get("cx", 0)
+
+print(f"Qubits: {compiled.num_qubits}")
 print(f"Depth: {compiled.depth()}")
-print(f"CX gates: {compiled.count_ops().get('cx', 0)}")
+print(f"CX gates: {two_qubit_gates}")
+
+keys = load_keys()
 
 
 for p in NOISE_LEVELS:
 
     print(f"\n{'=' * 40}")
-    print(f"CX error: {p * 100:.1f} %")
+    print(f"CX error: {p:g}  (eps * G = {p * two_qubit_gates:.2f})")
     print(f"{'=' * 40}")
 
     noise_model = NoiseModel()
@@ -60,13 +73,13 @@ for p in NOISE_LEVELS:
             ["cx"]
         )
 
+    # matrix product state: about 4x faster than statevector for this circuit
     simulator = AerSimulator(
         noise_model=noise_model,
         method="matrix_product_state"
     )
 
-    peak_fractions = []
-    useful_fractions = []
+    success = []
 
     for seed in SEEDS:
 
@@ -78,56 +91,48 @@ for p in NOISE_LEVELS:
 
         counts = result.get_counts()
 
-        peak_fraction = sum(
-            counts.get(bits, 0)
-            for bits in IDEAL_PEAKS
-        ) / SHOTS
-
-        useful_fraction = sum(
-            counts.get(bits, 0)
-            for bits in USEFUL_PHASES
-        ) / SHOTS
-
-        peak_fractions.append(peak_fraction)
-        useful_fractions.append(useful_fraction)
-
-        print(
-            f"Seed {seed}: "
-            f"ideal={peak_fraction:.3f}, "
-            f"useful={useful_fraction:.3f}"
-        )
-
-        # save each simulation
         data = {
             "N": N,
             "a": a,
             "counting_qubits": COUNTING_QUBITS,
+            "multiplier": MULTIPLIER,
             "shots": SHOTS,
             "seed": seed,
             "cx_error_probability": p,
-            "peak_fraction": peak_fraction,
-            "useful_fraction": useful_fraction,
-            "counts": counts
+            "circuit": {
+                "qubits": compiled.num_qubits,
+                "depth": compiled.depth(),
+                "two_qubit_gates": two_qubit_gates
+            },
+            "counts": dict(sorted(counts.items()))
         }
 
-        filename = OUTPUT_DIR / f"N{N}_a{a}_p{p}_seed{seed}.json"
+        # success per shot: the full classical pipeline must break the keys
+        analysis = analyse_counts(data, keys)
+        success.append(analysis["p_s"])
+
+        print(
+            f"Seed {seed}: "
+            f"p_s = {analysis['p_s']:.3f} "
+            f"(pure noise {analysis['p_s_uniform']:.3f})",
+            flush=True
+        )
+
+        # save each simulation
+        filename = OUTPUT_DIR / f"N{N}_a{a}_t{COUNTING_QUBITS}_p{p}_seed{seed}.json"
 
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
     # summarize the runs
-    mean_peak = np.mean(peak_fractions)
-    mean_useful = np.mean(useful_fractions)
-
-    std_useful = np.std(useful_fractions, ddof=1)
+    mean_success = np.mean(success)
+    std_success = np.std(success, ddof=1)
 
     print("\nAVERAGE:")
-    print(f"Ideal peaks: {mean_peak:.3f}")
-    print(f"Useful phases: {mean_useful:.3f}")
-    print(f"Standard deviation: {std_useful:.4f}")
+    print(f"Success per shot: {mean_success:.3f} +- {std_success:.3f}")
 
-    if mean_useful > 0:
+    if mean_success > 0:
         print(
             f"Expected number of measurements: "
-            f"{1 / mean_useful:.2f}"
+            f"{1 / mean_success:.2f}"
         )

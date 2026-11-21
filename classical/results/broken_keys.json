@@ -1,0 +1,117 @@
+[
+  {
+    "record": "N15_a7_t4_ibm_kingston_dbvmn7anj2vs73dcrfog.json",
+    "N": 15,
+    "a": 7,
+    "y": 8,
+    "period": 4,
+    "p": 3,
+    "q": 5,
+    "e": 7,
+    "d": 7,
+    "keygen_d": 7,
+    "ciphertexts": [
+      8,
+      13,
+      2
+    ],
+    "decrypted": [
+      2,
+      7,
+      8
+    ],
+    "correct": true
+  },
+  {
+    "record": "N15_a7_t4_ibm_kingston_dbvmn7anj2vs73dcrfog.json",
+    "N": 15,
+    "a": 7,
+    "y": 8,
+    "period": 4,
+    "p": 3,
+    "q": 5,
+    "e": 7,
+    "d": 7,
+    "keygen_d": 7,
+    "ciphertexts": [
+      2,
+      13,
+      12
+    ],
+    "decrypted": [
+      8,
+      7,
+      3
+    ],
+    "correct": true
+  },
+  {
+    "record": "N15_a7_t4_ibm_kingston_dbvmn7anj2vs73dcrfog.json",
+    "N": 15,
+    "a": 7,
+    "y": 8,
+    "period": 4,
+    "p": 3,
+    "q": 5,
+    "e": 7,
+    "d": 7,
+    "keygen_d": 7,
+    "ciphertexts": [
+      12,
+      8,
+      13
+    ],
+    "decrypted": [
+      3,
+      2,
+      7
+    ],
+    "correct": true
+  },
+  {
+    "record": "N15_a7_t4_ibm_kingston_dbvmn7anj2vs73dcrfog.json",
+    "N": 15,
+    "a": 7,
+    "y": 8,
+    "period": 4,
+    "p": 3,
+    "q": 5,
+    "e": 7,
+    "d": 7,
+    "keygen_d": 7,
+    "ciphertexts": [
+      8,
+      7,
+      13
+    ],
+    "decrypted": [
+      2,
+      13,
+      7
+    ],
+    "correct": true
+  },
+  {
+    "record": "N15_a7_t4_ibm_kingston_dbvmn7anj2vs73dcrfog.json",
+    "N": 15,
+    "a": 7,
+    "y": 8,
+    "period": 4,
+    "p": 3,
+    "q": 5,
+    "e": 3,
+    "d": 3,
+    "keygen_d": 3,
+    "ciphertexts": [
+      13,
+      2,
+      7
+    ],
+    "decrypted": [
+      7,
+      8,
+      13
+    ],
+    "correct": true
+  }
+]

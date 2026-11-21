@@ -1,0 +1,384 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Skupina29/main.tex
+% Razbijanje poenostavljenih ključev RSA s Shorovim algoritmom in z grobo silo
+% Koda in podatki: https://github.com/ninakokalj/cracking_RSA_with_shor_algorithm
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\graphicspath{{Skupina29/img/}}
+
+\title{Razbijanje poenostavljenih ključev RSA s Shorovim algoritmom in z grobo silo}
+\titlerunning{Shorov algoritem in napad z grobo silo}
+\author{Luka Mikić in Nina Kokalj}
+\maketitle
+
+\abstract{Shorov algoritem naj bi na dovolj velikem kvantnem računalniku razbil šifriranje RSA v polinomskem času, današnji kvantni računalniki pa so premajhni in šumni. Na poenostavljenih ključih RSA smo preverili, kaj je največja omejitev za Shorov algoritem. Enako smo naredili za klasični napad z grobo silo. Naša izvedba Shorovega algoritma je v simulaciji razbila 20 ključev dolžine med 4 in 6 biti. Čas napada z grobo silo se podvoji na vsaka dva dodatna bita ključa. Pri Shorovem algoritmu čas po naših ocenah in meritvah narašča polinomsko, verjetnost uspeha pa z napakami kvantnih vrat hitro pada. Na kvantnem procesorju IBM je naša izvedba Shorovega algoritma z binarnim množilnikom dala le šum, zato bi bilo treba število vrat še močno zmanjšati in izboljšati odpornost na napake. Z vrati brez napak bi bil Shorov algoritem hitrejši od napada z grobo silo pri ključih s približno 90 biti, vendar bi morala biti vrata za to osem do devet velikostnih redov natančnejša od današnjih.}
+
+
+\section{Uvod}
+\label{g29:sec:uvod}
+
+Varnost šifrirnega sistema RSA~\cite{g29:rivest1978} temelji na tem, da produkta dveh velikih praštevil $N = pq$ ni mogoče hitro razstaviti na ta dva faktorja. Najboljši znani klasični algoritem za velike ključe RSA, splošno sito številskih obsegov (angl.\ \emph{general number field sieve}, GNFS)~\cite{g29:lenstra1990}, deluje v podeksponentnem času (hitreje od eksponentnega, a počasneje od vsakega polinomskega časa), a je kljub temu počasen: razstavitev 829-bitnega števila RSA-250 je leta 2020 zahtevala približno 2700 let računskega časa enega procesorskega jedra~\cite{g29:rsa250}.
+
+Shorov algoritem~\cite{shor1997} v teoriji isto nalogo reši v polinomskem času. Za naključno bazo $a$, tujo številu $N$, je zaporedje $a^1, a^2, a^3, \dots \bmod N$ periodično s periodo $r$. Če je $r$ sod in $a^{r/2} \not\equiv -1 \pmod N$, kar velja vsaj za polovico baz, iz periode z Evklidovim algoritmom izračunamo $p$ in $q$ (enačba~\eqref{g29:eq:faktorja}). Sicer poskusimo z drugo bazo. Klasični računalnik bi moral periodo iskati člen za členom, kar traja eksponentno dolgo, saj je perioda lahko velika skoraj kot $N$. Kvantni računalnik izračuna $a^x \bmod N$ za vse eksponente $x$ hkrati v superpoziciji, kvantna Fourierjeva transformacija pa iz te periodične superpozicije izlušči periodo~\cite{nielsen2010}.
+
+Največji del Shorovega vezja je modularno množenje, ki se izvede hkrati za vse vhode v superpoziciji. V naši izvedbi je sestavljeno iz binarnih kvantnih seštevalnikov, podobnih tistim v~\cite{g29:vedral1996}, druge izvedbe pa uporabljajo seštevalnike v Fourierjevem prostoru~\cite{g29:draper2000,g29:beauregard2003}. Po najnovejših ocenah bi 2048-bitni ključ razstavili v manj kot tednu z manj kot milijonom fizičnih kubitov z napako vrat 0,1\,\%, ki jih s kvantnim popravljanjem napak združimo v zanesljivejše logične kubite~\cite{g29:gidney2025}. Današnji procesorji imajo podobno napako vrat, vendar le nekaj sto kubitov~\cite{preskill2018}, popravljanje napak pa so doslej pokazali le na posameznih logičnih kubitih~\cite{google2025below}. Zato so s Shorovim algoritmom na strojni opremi doslej razstavili le majhna števila, kot je 15~\cite{g29:vandersypen2001,g29:monz2016}, in še to z vezji, sestavljenimi posebej za vnaprej znan rezultat. 
+
+\begin{svgraybox}
+\textbf{Raziskovalno vprašanje.} Kako velikost ključa in napaka kvantnih vrat vplivata na čas in uspešnost Shorovega algoritma pri razbijanju poenostavljenih ključev RSA in pri kateri velikosti ključa bi bil hitrejši od klasičnega napada z grobo silo?
+
+\textbf{Pričakovani rezultat.} Čas ene ponovitve Shorovega algoritma narašča z velikostjo ključa polinomsko, verjetnost uspeha pa eksponentno pada s produktom napake in števila vrat, zato na današnjih procesorjih pričakujemo le šum. Napad z grobo silo, katerega čas narašča eksponentno, bo pri naših majhnih ključih bistveno hitrejši, Shorov algoritem pa bi ga prehitel šele pri večjih ključih in le z vrati brez napak ali s kvantnim popravljanjem napak.
+\end{svgraybox}
+
+V razdelku~\ref{g29:sec:metode} opišemo ključe, oba napada in meritve, v razdelku~\ref{g29:sec:rezultati} rezultate simulacij, meritev na procesorju IBM in primerjavo napadov, v razdelku~\ref{g29:sec:razprava} pa odgovorimo na raziskovalno vprašanje in opišemo omejitve.
+
+
+\section{Metode}
+\label{g29:sec:metode}
+
+\subsection{Orodja in nastavitve}
+\label{g29:sec:orodja}
+
+Meritve smo izvedli v Pythonu z nastavitvami iz tabele~\ref{g29:tab:nastavitve}. Koda, podatki in navodila za ponovitev rezultatov so v repozitoriju projekta\footnote{\url{https://github.com/ninakokalj/cracking_RSA_with_shor_algorithm}}.
+
+\begin{table}[htbp]
+\caption{Orodja in nastavitve.}
+\label{g29:tab:nastavitve}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{ll}
+\toprule
+Parameter & Vrednost \\
+\midrule
+kvantno okolje & Qiskit 2.6.2~\cite{qiskit2024}, Qiskit Aer 0.18.4, qiskit-ibm-runtime 0.52.1 \\
+simulator & Aer, metoda matričnih produktnih stanj (\texttt{matrix\_product\_state}) \\
+prevajanje za simulator & raven optimizacije 1 \\
+prevajanje za procesor & prednastavljen prevajalnik, raven optimizacije 3 \\
+model procesorja & \texttt{FakeBrisbane}: povezljivost in trajanje vrat \texttt{ibm\_brisbane} \\
+kvantni procesor & \texttt{ibm\_kingston} (Heron, 156 kubitov), IBM Quantum Open Plan \\
+napad z grobo silo & čisti Python 3.14, Intel Core i7-1355U (2 zmogljivi in 8 varčnih jeder) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Zasnova poskusov}
+\label{g29:sec:poskusi}
+
+\runinhead{Ključi.} Ključe ustvari naš poenostavljeni generator ključev RSA (\texttt{keygen.py} v repozitoriju). Poenostavljen je v dveh pogledih: praštevili sta zelo majhni, šifriranje pa je učbeniško, $c = m^e \bmod N$, brez dopolnjevanja sporočil (angl.\ \emph{padding}), ki ga uporablja pravi RSA. Velikost ključa merimo v bitih: $n$ je število bitov modula $N = pq$ (na primer $N = 15$ ima 4 bite), od $n$ pa je odvisna velikost Shorovega vezja. Za izbrani $n$ generator naključno izbere različni lihi praštevili $p < q$, katerih produkt ima $n$ bitov, javni eksponent $e$ in nekaj sporočil $m$, ki jih zašifrira. Izloči eksponente z $e \equiv 1 \pmod{\lambda(N)}$, kjer je $\lambda(N) = \operatorname{lcm}(p-1, q-1)$, saj pri njih šifriranje nobenega sporočila ne spremeni, in posamezna sporočila, ki pri šifriranju ostanejo enaka. Razbitja takšnih ključev namreč ne bi mogli preveriti z dešifriranjem. Generator teče s stalnim semenom, zato je nabor ključev ponovljiv. Za Shorov algoritem smo ustvarili 20 ključev s 4 do 6 biti, od tega 13 različnih javnih ključev z 8 različnimi moduli od 15 do 57. Vsi imajo faktor 3 ali 5, zato bi jih napad z grobo silo razbil že z enim ali dvema deljenjema. Za napad z grobo silo zato generator v posebnem načinu ustvari uravnotežene ključe z 8 do 52 biti, pri katerih imata $p$ in $q$ približno $n/2$ bitov. To je zanj najtežji primer in ustreza pravemu RSA.
+
+\runinhead{Od periode do faktorjev.} Za bazo $a$, ki je tuja številu $N$, je zaporedje $a^1, a^2, \dots \bmod N$ periodično s periodo $r$, torej $a^r \equiv 1 \pmod N$. Pri sodem $r$ lahko $a^r - 1 \equiv 0 \pmod N$ zapišemo kot $(a^{r/2}-1)(a^{r/2}+1) \equiv 0 \pmod N$, kar pomeni, da $N$ deli ta produkt. Prvega faktorja, $a^{r/2}-1$, število $N$ ne deli: sicer bi veljalo $a^{r/2} \equiv 1 \pmod N$, zaporedje bi se ponovilo že po $r/2$ korakih in perioda bi bila $r/2$ namesto $r$. Če $N$ ne deli niti drugega faktorja, $a^{r/2}+1$, torej če $a^{r/2} \not\equiv -1 \pmod N$, mora eno od praštevil $p$ in $q$ deliti prvi faktor, drugo pa drugega. Vsako praštevilo, ki deli produkt, namreč deli vsaj enega od faktorjev, obe pa ne moreta deliti istega, saj bi ga sicer delilo tudi $N = pq$. Največji skupni delitelj števil $a^{r/2}-1$ in $N$ je zato eno od praštevil, izračunamo pa ga z Evklidovim algoritmom:
+\begin{equation}
+p = \gcd\!\left(a^{r/2} - 1, N\right), \qquad q = N / p.
+\label{g29:eq:faktorja}
+\end{equation}
+Za $N = 15$ in $a = 7$ so potence $7, 4, 13, 1$, torej je $r = 4$, $7^2 \bmod 15 = 4$ in $p = \gcd(3, 15) = 3$, $q = 5$.
+
+\runinhead{Shorovo vezje.} Kvantni del algoritma poišče periodo $r$ (slika~\ref{g29:fig:vezje}). Vezje ima dva registra: števni register s $t$ kubiti hrani eksponent $x$, delovni register z $n$ kubiti pa vrednost $a^x \bmod N$. Števni register postavimo v enakomerno superpozicijo vseh $2^t$ eksponentov, nato pa vezje za vse $x$ hkrati izračuna $a^x \bmod N$ v delovni register. Kako, opišemo v odstavku \emph{Modularno množenje}. Registra sta zdaj prepletena: vsak eksponent je v superpoziciji povezan s svojo vrednostjo $a^x \bmod N$. Če bi števni register izmerili zdaj, bi dobili le naključen eksponent, kar ni nič bolje od klasičnega ugibanja.
+
+Periodo razkrije šele periodičnost potenc. Ker je $a^{x+r} \equiv a^x \pmod N$, imajo v delovnem registru isto vrednost natanko eksponenti, ki so med seboj oddaljeni za večkratnik $r$. Predstavljajmo si, da delovni register izmerimo. Za $N = 15$, $a = 7$ in $t = 4$ so potence $7^x \bmod 15$ zaporedoma $1, 7, 4, 13, 1, 7, \dots$. Če izmerimo vrednost 4, v števnem registru ostane superpozicija eksponentov $x = 2, 6, 10, 14$, ki so med seboj oddaljeni za $r = 4$ (obrobljena polja na sliki~\ref{g29:fig:vezje-b}). Ta meritev v resnici ni potrebna in je v vezju ne izvedemo, saj na izid števnega registra ne vpliva, pomaga pa razumeti, zakaj je stanje števnega registra periodično. Inverzna kvantna Fourierjeva transformacija (inverzna QFT) periodično superpozicijo pretvori v vrhove pri večkratnikih $2^t/r$, podobno kot diskretna Fourierjeva transformacija periodičnega signala da vrhove pri večkratnikih njegove osnovne frekvence. Drugi izidi se z destruktivno interferenco izničijo. Meritev števnega registra zato z veliko verjetnostjo vrne izid $y$, za katerega velja
+\begin{equation}
+\frac{y}{2^t} \approx \frac{s}{r}, \qquad s \in \{0, 1, \dots, r-1\}.
+\label{g29:eq:faza}
+\end{equation}
+Za $N = 15$ so to izidi $y \in \{0, 4, 8, 12\}$ (slika~\ref{g29:fig:vezje-c}), torej $y/16 \in \{0, 1/4, 1/2, 3/4\}$. Kateri vrh izmerimo, je naključno, zato meritev ne da neposredno periode $r$, temveč ulomek $s/r$ z naključnim števcem $s$. Pri večjem $N$ vrhovi po inverzni QFT, ki predstavljajo ulomke $s/r$, niso natančno na celih številih $y$, temveč nekoliko razmazani, zato potrebujemo dovolj števnih kubitov. Z $t = 2n$ je ločljivost $1/2^t$ dovolj fina, da iz enega izida $y$ pravilno določimo ulomek $s/r$. Opisani postopek se imenuje ocena kvantne faze (angl.\ \emph{quantum phase estimation}).
+
+\runinhead{Modularno množenje.} Delovni register začne v stanju $\ket{1}$, vezje pa vanj potenco $a^x$ zgradi z zaporednimi množenji. Eksponent $x$ zapišemo v dvojiškem sistemu, na primer $6 = 110_2 = 4 + 2$, zato je $a^6 = a^4 \cdot a^2$. Vsak števni kubit hrani en bit eksponenta in krmili eno množenje: če je $j$-ti bit enak 1, delovni register pomnožimo z $a^{2^j} \bmod N$, sicer ostane nespremenjen (slika~\ref{g29:fig:vezje-a}). Vsako množenje pomnoži trenutno vrednost $w$ v delovnem registru, ki je rezultat dotedanjih množenj in je v superpoziciji, z znano konstanto $b = a^{2^j} \bmod N$. Množenje razstavimo na seštevanja, podobno kot pisno množenje v dvojiškem sistemu: za vsak bit $w_i = 1$ prištejemo konstanto $2^i b \bmod N$, ki jo izračunamo vnaprej na klasičnem računalniku. Pri $N = 15$ in $a = 7$ drugo množenje množi z $b = 7^2 \bmod 15 = 4$. Če je prvo množenje delovni register nastavilo na $w = 7 = 111_2 = 1 + 2 + 4$, so vsi trije biti enaki 1. Konstante $2^i b$ so tedaj $4$, $8$ in $16$. Vnaprej jih zmanjšamo po modulu 15, da so vse manjše od $N$, zato se spremeni le zadnja, $16 \bmod 15 = 1$. Seštevalnik jih zaporedoma prišteva: $4$, $4 + 8 = 12$ in $12 + 1 = 13$. Rezultat je res $4 \cdot 7 = 28 \bmod 15 = 13$. Če bi vsota med seštevanjem dosegla ali presegla $N$, bi seštevalnik od nje odštel $N$. Ker konstante $b = a^{2^j} \bmod N$ izračunamo vnaprej, lahko preskočimo množenja, pri katerih velja $a^{2^j} \equiv 1 \pmod N$, saj delovnega registra ne spremenijo. Ustrezni števni kubit ostane v vezju, le ničesar ne krmili. Pri $N = 15$, $a = 7$ in $t = 4$ so konstante za $j = 0, 1, 2, 3$ zaporedoma $7$, $7^2 \bmod 15 = 4$, $7^4 \bmod 15 = 1$ in $7^8 \bmod 15 = 1$, zato zadnji dve množenji preskočimo. To vezje močno skrajša, vendar razkrije nekaj o periodi, kar opišemo v razdelku~\ref{g29:sec:razprava}. Vsako seštevanje izvede binarni seštevalnik, ki prenos prenaša od nižjih k višjim bitom, tako kot pri pisnem seštevanju, zato tak množilnik imenujemo binarni. Potrebuje $n+4$ pomožnih kubitov (angl.\ \emph{ancilla}): $n$ za vmesni rezultat, enega za prenos iz najvišjega bita in tri zastavice, s katerimi seštevalnik odloči, ali mora od vsote odšteti $N$. Po vsakem množenju se vrnejo v stanje $\ket{0}$, saj bi sicer ostali prepleteni z registroma in pokvarili interferenco, na kateri temelji QFT. Vezje ima torej skupaj $t + n + (n+4) = 4n+4$ kubitov. Za primerjavo smo pripravili še matrični množilnik: množenje zapišemo kot permutacijsko matriko, ki jo prevajalnik razgradi v vrata. Pri majhnem $N$ je to vezje zelo kratko, zato z njim na procesorju preverimo, ali kratko vezje vrne signal. Razširljivo ni, saj sestava matrike zahteva izračun $bw \bmod N$ za vse $w$.
+
+\begin{figure}[htbp]
+\centering
+% barve za vrednosti delovnega registra (paleta Okabe–Ito, prijazna barvni slepoti)
+\definecolor{g29v1}{HTML}{56B4E9}
+\definecolor{g29v7}{HTML}{E69F00}
+\definecolor{g29v4}{HTML}{009E73}
+\definecolor{g29v13}{HTML}{CC79A7}
+\newcommand{\korak}[1]{\textcircled{\scriptsize #1}}
+\begin{subfigure}{\textwidth}
+\centering
+\begin{quantikz}[row sep={0.68cm,between origins}, column sep=0.3cm, font=\small]
+\lstick{$x_0\colon\ \ket{0}$}
+  & \gate{H}\gategroup[4,steps=1,style={rounded corners,fill=gray!13,draw=none,inner xsep=0.5pt},background,label style={label position=above,anchor=south,yshift=-1pt}]{\korak{1}}
+  & \ctrl{4}\gategroup[6,steps=4,style={rounded corners,fill=gray!13,draw=none,inner xsep=0.5pt},background,label style={label position=above,anchor=south,yshift=-1pt}]{\korak{2} $a^x \bmod N$}
+  & & \ \cdots\ &
+  & \gate[4]{\mathrm{QFT}^{-1}}\gategroup[4,steps=1,style={rounded corners,fill=gray!13,draw=none,inner xsep=0.5pt},background,label style={label position=above,anchor=south,yshift=-1pt}]{\korak{3}}
+  & \meter{} & \setwiretype{c} \rstick[4]{$y$} \\
+\lstick{$x_1\colon\ \ket{0}$}
+  & \gate{H} & & \ctrl{3} & \ \cdots\ & & & \meter{} & \setwiretype{c} \\
+\setwiretype{n} & \vdots & & & & & & \vdots & \\
+\lstick{$x_{t-1}\colon\ \ket{0}$}
+  & \gate{H} & & & \ \cdots\ & \ctrl{1} & & \meter{} & \setwiretype{c} \\
+\lstick{$w\colon\ \ket{1}$\llap{\smash{\raisebox{-2.4ex}{\scriptsize\color{gray}$n$ kubitov}}}}
+  & & \gate[2]{U_{a}} & \gate[2]{U_{a^{2}}} & \ \cdots\ & \gate[2]{U_{a^{2^{t-1}}}} & & & \rstick{$a^x \bmod N$} \\
+\lstick{$\ket{0}$\llap{\smash{\raisebox{-2.4ex}{\scriptsize\color{gray}$n+4$ kubitov}}}}
+  & & & & \ \cdots\ & & & & \rstick{$\ket{0}$}
+\end{quantikz}
+\caption{Vezje}
+\label{g29:fig:vezje-a}
+\end{subfigure}
+
+\medskip
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}[x=6mm,y=6mm,font=\footnotesize]
+  % vrednosti 7^x mod 15 se ponavljajo s periodo 4
+  \foreach \x/\v/\c in {0/1/g29v1,1/7/g29v7,2/4/g29v4,3/13/g29v13,
+                        4/1/g29v1,5/7/g29v7,6/4/g29v4,7/13/g29v13,
+                        8/1/g29v1,9/7/g29v7,10/4/g29v4,11/13/g29v13,
+                        12/1/g29v1,13/7/g29v7,14/4/g29v4,15/13/g29v13} {
+    \fill[\c!45] (\x,0) rectangle +(1,1);
+    \draw[white,line width=0.8pt] (\x,0) rectangle +(1,1);
+    \node at (\x+0.5,0.5) {\v};
+    \node[gray] at (\x+0.5,1.4) {\x};
+  }
+  \node[anchor=east] at (-0.15,1.4) {$x$};
+  \node[anchor=east] at (-0.15,0.5) {$7^x \bmod 15$};
+  % eksponenti z vrednostjo 4
+  \foreach \x in {2,6,10,14} \draw[g29v4!70!black,line width=1.1pt] (\x+0.06,0.06) rectangle +(0.88,0.88);
+  \foreach \x in {2,6,10} {
+    \draw[<->,>=stealth,g29v4!70!black] (\x+0.5,-0.25) -- node[below=-1pt] {$r=4$} (\x+4.5,-0.25);
+  }
+\end{tikzpicture}
+\caption{Po koraku \korak{2}: vrednost delovnega registra za vsak eksponent $x$}
+\label{g29:fig:vezje-b}
+\end{subfigure}
+
+\medskip
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}[x=6mm,y=6mm,font=\footnotesize]
+  \draw[gray] (0,0) -- (16,0);
+  \foreach \y in {0,...,15} \node[gray] at (\y+0.5,-0.4) {\y};
+  \node[anchor=east] at (-0.15,-0.4) {$y$};
+  \node[anchor=east] at (-0.15,1) {$P(y)$};
+  % vrhovi pri večkratnikih 2^t/r = 4, vsak z verjetnostjo 1/4
+  \foreach \y/\f/\c in {0/0/gray,4/\tfrac14/g29v4,8/\tfrac12/g29v4,12/\tfrac34/g29v4} {
+    \fill[\c!55] (\y+0.15,0) rectangle (\y+0.85,2);
+    \node at (\y+0.5,2.35) {$\tfrac14$};
+    \node at (\y+0.5,-1.05) {$\f$};
+  }
+  \node[anchor=east] at (-0.15,-1.05) {$y/2^t$};
+  \foreach \y in {1,2,3,5,6,7,9,10,11,13,14,15} \draw[gray!50] (\y+0.3,0) -- (\y+0.7,0);
+\end{tikzpicture}
+\caption{Po koraku \korak{3}: porazdelitev izidov meritve števnega registra}
+\label{g29:fig:vezje-c}
+\end{subfigure}
+\caption[Shorovo vezje in primer za $N = 15$]{Shorovo vezje in primer za $N = 15$, $a = 7$, $t = 4$.
+(a)~Vsaka od zgornjih vodoravnih črt je en kubit števnega registra, ki hrani eksponent $x$ (kubit $x_j$ je njegov $j$-ti bit, skupaj $t = 2n$ kubitov). Spodnji črti zaradi preglednosti predstavljata cela registra: delovni register $w$ z $n$ kubiti in $n+4$ pomožnih kubitov množilnika, ki se po vsakem množenju vrnejo v $\ket{0}$. Korak~\korak{1}: vrata $H$ ustvarijo enakomerno superpozicijo vseh $2^t$ eksponentov. Korak~\korak{2}: vrata $U_b$ izvedejo $\ket{w} \mapsto \ket{bw \bmod N}$, vendar le, kadar je krmilni kubit (pika) v stanju $\ket{1}$, zato se $w$ pomnoži z $a^{2^j}$ natanko za bite $x_j = 1$ in delovni register na koncu hrani $a^x \bmod N$. Korak~\korak{3}: inverzna kvantna Fourierjeva transformacija, nato meritev števnega registra (dvojne črte so klasični biti izida $y$).
+(b)~Stanje po koraku~\korak{2} je enakomerna superpozicija parov $\ket{x}\ket{7^x \bmod 15}$. Vrednosti se ponavljajo s periodo $r = 4$: enako vrednost (barvo) imajo eksponenti, oddaljeni za večkratnik $r$, na primer obrobljeni $x = 2, 6, 10, 14$ z vrednostjo~4.
+(c)~Inverzna QFT to periodičnost pretvori v štiri enako verjetne vrhove pri večkratnikih $2^t/r = 4$, torej $y/2^t = s/r$ za $s = 0, 1, 2, 3$. Vsi drugi izidi imajo verjetnost~0. Izid $y = 0$ (siv) o periodi ne pove ničesar.}
+\label{g29:fig:vezje}
+\end{figure}
+
+\runinhead{Klasična obdelava.} Periodo iz izida $y$ dobimo z razvojem ulomka $y/2^t$ v verižni ulomek, ki poišče najbližji ulomek $s/r$ z imenovalcem, ne večjim od $N$ (enačba~\eqref{g29:eq:faza}). Imenovalec $r$ je kandidat za periodo. Če imata $s$ in $r$ skupni delitelj, se ulomek okrajša in dobimo le delitelj periode, zato v primeru $a^r \not\equiv 1 \pmod N$ preizkusimo še $2r$ in $3r$. Faktorja nato izračunamo z enačbo~\eqref{g29:eq:faktorja}. Za $N = 15$ in $a = 7$ iz izidov $y = 4$ in $y = 12$ dobimo ulomka $1/4$ in $3/4$, torej $r = 4$. Iz izida $y = 8$ dobimo $2/4 = 1/2$ in kandidat 2, ki ni perioda, zato preizkusimo še $2 \cdot 2 = 4$. Izid $y = 0$ da ulomek $0$, iz katerega periode ne razberemo. Ker so vsi štirje izidi enako verjetni (slika~\ref{g29:fig:vezje-c}), uspe tri četrtine ponovitev. Če ponovitev ne uspe, vezje z isto bazo zaženemo znova, saj je neuspeh posledica naključnega $s$. Drugo bazo izberemo le, če je perioda liha ali $a^{r/2} \equiv -1 \pmod N$.
+
+\runinhead{Napad z grobo silo.} Napad s poskusnim deljenjem (angl.\ \emph{trial division}) išče delitelj $N$ le med števili do $\sqrt{N}$ in le med števili oblike $6\ell \pm 1$, saj je vsako praštevilo, večje od 3, takšne oblike. Vzporedna različica razdeli kandidate na majhne bloke, ki jih procesi jemljejo sproti, in se ustavi takoj, ko kateri od procesov najde delitelj.
+
+\runinhead{Seznam meritev.}
+\begin{enumerate}
+\item \emph{Idealne simulacije:} za vsakega od 8 različnih modulov izberemo tri naključne baze $a$ med števili od 2 do $N-2$, ki so tuja številu $N$, skupaj 24 parov $(N, a)$, s $t = 2n$ in 4096 ponovitvami (angl.\ \emph{shots}). Baz, ki vedno odpovejo, ne izločimo vnaprej, saj je njihov delež del cene Shorovega algoritma.
+\item \emph{Vpliv šuma:} $N = 15$, $a = 2$ in $t = 4$. Štirje števni kubiti zadoščajo, ker perioda 4 deli $2^4$, kar pa pomeni, da izbira upošteva znano periodo. Šum modeliramo kot depolarizacijski: po vsakih dvokubitnih vratih z verjetnostjo $\varepsilon \in \{0, 10^{-5}, 3 \cdot 10^{-5}, 10^{-4}, 3 \cdot 10^{-4}, 10^{-3}, 3 \cdot 10^{-3}\}$ stanje obeh kubitov nadomestimo z naključnim. Za vsako vrednost $\varepsilon$ izvedemo tri simulacije po 512 ponovitev. Šum simuliramo le za $N = 15$, ker je simulacija s šumom precej dražja: vsako ponovitev je treba simulirati posebej.
+\item \emph{Čas ponovitve:} ena ponovitev obsega izvedbo vezja, branje števnih kubitov in čakanje, preden procesor začne naslednjo ponovitev. Na procesorju smo jo izmerili le za $N = 15$ (točka 4). Pri večjem $n$ bi meritev porabila preveč procesorskega časa: pri $n = 10$ bi 4096 ponovitev trajalo več ur, brezplačni dostop do procesorjev IBM pa omogoča 10 minut na mesec. Za $n = 4, \dots, 10$ zato čas ocenimo iz trajanja posameznih vrat.
+
+Procesor ne izvaja vrat, kot jih zapišemo v vezju, temveč le nekaj osnovnih vrat: enokubitna vrata in ena vrsta dvokubitnih vrat (na \texttt{ibm\_brisbane} vrata ECR), ki delujejo le na kubitih, ki so na čipu sosednji. Prevajalnik (angl.\ \emph{transpiler}) zato vsaka vrata vezja razgradi v osnovna vrata. Kadar morajo dvokubitna vrata delovati na kubitih, ki nista sosednja, doda vrata SWAP, ki zamenjajo stanji dveh sosednjih kubitov, in z zaporedjem takih zamenjav stanje premakne do soseda drugega kubita. Vsaka osnovna vrata trajajo znan čas, na \texttt{ibm\_brisbane} na primer 60\,ns enokubitna in 660\,ns dvokubitna. Vrata na različnih kubitih se izvajajo hkrati, zato je trajanje vezja enako trajanju najdaljšega zaporedja vrat, ki morajo čakati druga na druga. Razporeditev kubitov in trajanje vrat vzamemo iz modela procesorja \texttt{ibm\_brisbane}, ki je v Qiskitu shranjen posnetek teh podatkov in je dostopen brez računa IBM.
+
+Prevajanje celotnega vezja je počasno: pri $n = 4$ je trajalo 1,7\,s, pri $n = 5$ pa že 15\,s. Prevedemo zato le eno krmiljeno množenje. Vseh $2n$ množenj ima enako zgradbo in se razlikujejo le po konstanti $b$, zato trajajo približno enako dolgo. Čas ponovitve ocenimo kot $2n$-kratnik trajanja enega množenja, ki mu prištejemo branje kubitov (1,3\,$\mu$s) in čakanje med ponovitvami (250\,$\mu$s). Predpostavimo, da nobenega množenja ne preskočimo, saj je $a^{2^j} \equiv 1 \pmod N$ le, kadar je perioda potenca števila 2, kar je pri velikem $N$ redko. Pri $n = 4$ in $n = 5$ oceno preverimo s trajanjem celotnega prevedenega vezja.
+\item \emph{Procesor IBM:} $N = 15$, $a = 7$ in $t = 4$ na procesorju \texttt{ibm\_kingston}, po šestkrat z binarnim in z matričnim množilnikom (enkrat 19.~11. in petkrat 21.~11.~2026), vsakič s 4096 ponovitvami.
+\item \emph{Napad z grobo silo:} čas razbitja petih uravnoteženih ključev za vsako velikost od 8 do 52 bitov (vsak čas je mediana vsaj treh zagonov) in pohitritev z 1 do 12 procesi na treh 52-bitnih ključih.
+\end{enumerate}
+
+\subsection{Metrike}
+\label{g29:sec:metrike}
+
+Ena ponovitev je en zagon vezja z eno meritvijo števnega registra in klasično obdelavo izida. Osnovna metrika je verjetnost uspeha $p_s$, to je delež ponovitev, iz katerih dobimo pravilna faktorja $N$. Pričakovano število ponovitev do razbitja je $1/p_s$. Če je $\tau$ čas ene ponovitve, je pričakovani čas za razbitje $T_\text{razb} = \tau / \bar{p}_s$, kjer je $\bar{p}_s$ verjetnost uspeha, povprečena čez naključne baze. Tudi vezje, ki vrača le šum, včasih uspe, saj nekateri naključni izidi vodijo do pravilne periode. Zato za vsak par $(N, a)$ izračunamo še dve referenčni vrednosti. Če klasično obdelavo izvedemo za vseh $2^t$ možnih izidov $y$ in je pravilna faktorja dalo $k$ izidov, je $p_\text{šum} = k / 2^t$ verjetnost uspeha vezja, pri katerem so vsi izidi enako verjetni. Za $N = 15$, $a = 7$ in $t = 4$ uspejo izidi $y = 4, 8, 12$, zato je $p_\text{šum} = 3/16 \approx 0{,}188$. Idealna vrednost $p_\text{id}$ je verjetnost uspeha vezja brez napak, pri kateri vsak izid utežimo z njegovo verjetnostjo v idealnem vezju. Za isti primer so štirje izidi $y = 0, 4, 8, 12$ enako verjetni (slika~\ref{g29:fig:vezje-c}), trije od njih uspejo, zato je $p_\text{id} = 3/4$.
+
+Ali vezje deluje, pove, kje med obema referenčnima vrednostma leži $p_s$. Predpostavimo, da ponovitev brez napake uspe z verjetnostjo $p_\text{id}$, ponovitev z vsaj eno napako pa se obnaša kot šum in uspe z verjetnostjo $p_\text{šum}$. Če ponovitev poteče brez napake z verjetnostjo $P_0$, je $p_s = P_0\, p_\text{id} + (1 - P_0)\, p_\text{šum}$. Iz te zveze izrazimo $P_0$ in ga imenujemo delež ohranjenega signala:
+\begin{equation}
+S = \frac{p_s - p_\text{šum}}{p_\text{id} - p_\text{šum}}.
+\end{equation}
+Pri idealnem vezju je $S = 1$, pri čistem šumu pa $S = 0$. Vezje z $G$ dvokubitnimi vrati, ki vsaka neodvisno odpovejo z verjetnostjo $\varepsilon$, poteče brez napake z verjetnostjo $(1 - \varepsilon)^G \approx e^{-\varepsilon G}$, kjer je $\varepsilon G$ pričakovano število napak v eni ponovitvi. Vse napake rezultata ne pokvarijo, saj nekatere stanja ne spremenijo, druge pa ne vplivajo na izmerjene kubite. Zato vpeljemo parameter $\kappa$, ki ga določimo s prilagoditvijo simulacijam:
+\begin{equation}
+S \approx e^{-\kappa \varepsilon G}.
+\label{g29:eq:signal}
+\end{equation}
+$S$ je torej odvisen le od produkta $\varepsilon G$: desetkrat večje vezje potrebuje za enak $S$ desetkrat manjšo napako vrat. Ko $\kappa$ določimo na enem vezju, lahko $S$ napovemo za poljubno velikost vezja in poljubno napako vrat. Tako v razdelku~\ref{g29:sec:rezultati} primerjamo simulacijo z meritvami na procesorju in ocenimo, kako majhna mora biti napaka vrat pri večjih ključih.
+
+Pri vezjih poročamo število kubitov, globino (število zaporednih plasti vrat) in število dvokubitnih vrat pred prevajanjem in po njem, ker so dvokubitna vrata na procesorju najpočasnejša in najbolj šumna. Pri napadu z grobo silo merimo čas in število deljenj. Pohitritev primerjamo s pohitritvijo neodvisnega računskega bremena: enako veliko preprostega računanja razdelimo na enake dele, ki jih procesi računajo vsak zase, brez skupne čakalne vrste in brez ustavljanja. Ta pohitritev pokaže, koliko vzporednosti procesor sploh omogoča.
+
+
+\section{Rezultati}
+\label{g29:sec:rezultati}
+
+\runinhead{Razbijanje ključev.} Tabela~\ref{g29:tab:idealno} povzema idealne simulacije. Baze, ki delujejo in nimajo periode 2, dosežejo $p_s$ med 0,66 in 0,83, kar se od idealne vrednosti $p_\text{id}$ razlikuje za največ 0,01. Osem od 24 naključnih baz nikoli ne uspe: dve imata liho periodo, šest pa izpolnjuje $a^{r/2} \equiv -1 \pmod N$. Pri bazah s periodo 2 ima idealna porazdelitev le dva vrhova, pri $y = 0$, ki ne da ničesar, in pri $y = 2^{t-1}$, zato je $p_s = 0{,}49$. Tako kratko periodo pa najde že skoraj vsak naključen izid ($p_\text{šum} \approx 0{,}84$). Povprečna verjetnost uspeha pri naključni bazi je 0,488, kar pomeni v povprečju 2,05 ponovitve na ključ. Za ključe s 4, 5 in 6 biti je ta verjetnost 0,75, 0,27 in 0,48, kar je premalo podatkov za oceno trenda. Za vsakega od 8 modulov je uspela vsaj ena od treh naključnih baz. Ključ je razbit, ko poznamo faktorja njegovega modula, več ključev pa ima isti modul, zato smo s tem razbili vseh 20 ključev.
+
+\begin{table}[htbp]
+\caption{Idealne simulacije s $t = 2n$ in 4096 ponovitvami: število kubitov, največje število dvokubitnih vrat med tremi bazami po prevajanju za simulator in verjetnost uspeha $p_s$ za vsako od treh naključnih baz. Opomba ob bazi pove, zakaj baza nikoli ne uspe (liha perioda $r$ ali $a^{r/2} \equiv -1 \pmod N$) oziroma zakaj uspe redkeje (perioda $r = 2$).}
+\label{g29:tab:idealno}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{rrrr@{\hspace{1em}}rrl@{\hspace{0.5em}}rrl@{\hspace{0.5em}}rrl}
+\toprule
+ & & & & \multicolumn{3}{c}{1.\ baza} & \multicolumn{3}{c}{2.\ baza} & \multicolumn{3}{c}{3.\ baza} \\
+\cmidrule(r){5-7} \cmidrule(r){8-10} \cmidrule{11-13}
+$N$ & $n$ & kubiti & $G_{\max}$ & $a$ & $p_s$ & & $a$ & $p_s$ & & $a$ & $p_s$ & \\
+\midrule
+15 & 4 & 20 & 12\,684 & 2 & 0,750 &  & 8 & 0,750 &  & 13 & 0,750 &  \\
+21 & 5 & 24 & 136\,817 & 10 & 0,817 &  & 16 & 0,000 & {\scriptsize liha $r$} & 17 & 0,000 & {\scriptsize $a^{r/2} \equiv -1$} \\
+33 & 6 & 28 & 317\,174 & 17 & 0,000 & {\scriptsize $a^{r/2} \equiv -1$} & 23 & 0,490 & {\scriptsize $r = 2$} & 28 & 0,788 &  \\
+35 & 6 & 28 & 313\,476 & 11 & 0,000 & {\scriptsize liha $r$} & 18 & 0,663 &  & 29 & 0,490 & {\scriptsize $r = 2$} \\
+39 & 6 & 28 & 305\,679 & 8 & 0,746 &  & 17 & 0,000 & {\scriptsize $a^{r/2} \equiv -1$} & 29 & 0,826 &  \\
+51 & 6 & 28 & 102\,877 & 7 & 0,753 &  & 8 & 0,760 &  & 41 & 0,753 &  \\
+55 & 6 & 28 & 304\,391 & 14 & 0,781 &  & 24 & 0,000 & {\scriptsize $a^{r/2} \equiv -1$} & 49 & 0,781 &  \\
+57 & 6 & 28 & 313\,861 & 8 & 0,000 & {\scriptsize $a^{r/2} \equiv -1$} & 11 & 0,821 &  & 32 & 0,000 & {\scriptsize $a^{r/2} \equiv -1$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\runinhead{Velikost vezja.} Tabela~\ref{g29:tab:prevajanje} prikazuje lastnosti vezja za $N = 15$, $a = 7$ in $t = 4$ pred prevajanjem in po njem. Binarno vezje ima pred prevajanjem 832 vrat, ki delujejo na treh ali več kubitih, prevajalnik pa jih razgradi v več tisoč dvokubitnih vrat. Za procesor \texttt{ibm\_kingston} doda še vrata SWAP in uporabi 20 fizičnih kubitov namesto 16, ker stanja med nepovezanimi kubiti premika prek dodatnih kubitov. Tabela~\ref{g29:tab:vrata} primerja eno krmiljeno množenje obeh množilnikov. Pri matričnem množilniku se število vrat z vsakim dodatnim bitom poveča približno 4,14-krat, kar ustreza splošni sintezi matrike ($\approx 4^n$ vrat). Pri binarnem število vrat narašča približno kot $n^{3{,}6}$. Čeprav je binarni množilnik pri 4 bitih 26-krat dražji, bi bil po ekstrapolaciji matričnega cenejši od približno 8 bitov naprej. Večjih matrik nismo prevajali, ker sinteza traja predolgo: pri 7 bitih je trajala 32\,s, z vsakim dodatnim bitom pa se podaljša več kot desetkrat, zato bi pri 8 bitih trajala več kot 10 minut.
+
+\begin{table}[htbp]
+\caption{Lastnosti vezja za $N = 15$, $a = 7$ in $t = 4$ pred prevajanjem in po njem.}
+\label{g29:tab:prevajanje}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{llrrrr}
+\toprule
+množilnik & stopnja & kubiti & globina & vsa vrata & dvokubitna \\
+\midrule
+binarni & pred prevajanjem & 16 & 1\,245 & 1\,521 & 350 \\
+ & za simulator & 16 & 21\,681 & 26\,310 & 12\,486 \\
+ & za \texttt{ibm\_kingston} & 20 & 78\,115 & 130\,466 & 30\,888 \\
+\addlinespace
+matrični & pred prevajanjem & 8 & 11 & 19 & 8 \\
+ & za simulator & 8 & 923 & 1\,303 & 489 \\
+ & za \texttt{ibm\_kingston} & 8 & 2\,780 & 4\,715 & 795 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Število dvokubitnih vrat v enem krmiljenem modularnem množenju po prevajanju za simulator. Vrednosti v ležečem tisku z zvezdico (*) so ocene: za matrični množilnik smo jih ekstrapolirali iz izmerjenih vrednosti pri 4 do 7 bitih, pri katerih se število vrat z vsakim dodatnim bitom poveča približno 4,14-krat.}
+\label{g29:tab:vrata}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{rrr}
+\toprule
+$n$ & matrični & binarni \\
+\midrule
+4 & 236 & 6\,201 \\
+5 & 1\,004 & 13\,123 \\
+6 & 4\,140 & 24\,912 \\
+7 & 16\,812 & 41\,406 \\
+8 & \textit{7,0\,$\cdot$\,10\textsuperscript{4}}* & 67\,203 \\
+10 & \textit{1,2\,$\cdot$\,10\textsuperscript{6}}* & 151\,672 \\
+12 & \textit{2,1\,$\cdot$\,10\textsuperscript{7}}* & 295\,373 \\
+14 & \textit{3,6\,$\cdot$\,10\textsuperscript{8}}* & 520\,440 \\
+16 & \textit{6,1\,$\cdot$\,10\textsuperscript{9}}* & 859\,701 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\runinhead{Čas ponovitve.} Po prevajanju za model \texttt{ibm\_brisbane} ima eno množenje 17\,455 dvokubitnih vrat (10\,ms) pri $n = 4$ in 512\,579 (307\,ms) pri $n = 10$. Razlika glede na tabelo~\ref{g29:tab:vrata} gre na račun vrat SWAP. Ena ponovitev pri $n = 10$ obsega 20 množenj na 44 kubitih in traja 6,2\,s. Čas ponovitve narašča kot $n^{4{,}7}$: faktor $n^{3{,}6}$ izvira iz števila vrat v enem množenju, dodatni faktor $n$ pa iz števila množenj. Pri $n = 5$ se ocena s celotnim prevedenim vezjem ujema na 5\,\%. Pri $n = 4$ je celotno vezje 3,8-krat krajše od ocene, ker se pri $N = 15$ večina množenj preskoči. Za binarno vezje na procesorju \texttt{ibm\_kingston} ista metoda napove 11,9\,s za 4096 ponovitev, izmerjeni čas pa je bil 14\,s.
+
+\runinhead{Vpliv šuma.} Slika~\ref{g29:fig:sum-a} prikazuje verjetnost uspeha $p_s$ za $N = 15$ in $a = 2$ v odvisnosti od napake vrat $\varepsilon$. Vezje ima po prevajanju za simulator $G = 12\,598$ dvokubitnih vrat. Vsaka točka je povprečje treh simulacij z različnimi semeni generatorja naključnih števil, ki določa, pri katerih vratih pride do napake. Brez šuma je $p_s = 0{,}729$, kar je blizu $p_\text{id} = 0{,}75$. Pri $\varepsilon = 10^{-4}$, ko je pričakovano število napak v eni ponovitvi $\varepsilon G \approx 1{,}3$, je $p_s = 0{,}610$. Pri $\varepsilon = 3 \cdot 10^{-4}$ ($\varepsilon G \approx 3{,}8$) je $p_s = 0{,}462$, pri $\varepsilon = 3 \cdot 10^{-3}$ ($\varepsilon G \approx 38$) pa $p_s = 0{,}207$, kar je skoraj enako $p_\text{šum} = 0{,}188$. Če enačbo~\eqref{g29:eq:signal} prilagodimo vsaki od treh simulacij posebej, dobimo $\kappa = 0{,}147$, $0{,}135$ in $0{,}150$, v povprečju $\kappa = 0{,}14 \pm 0{,}01$. Rezultat torej pokvari le približno vsaka sedma napaka ($1/\kappa \approx 7$). Signal se prepolovi, ko je $S = 1/2$, torej pri $\kappa \varepsilon G = \ln 2$ oziroma $\varepsilon = \ln 2 / (\kappa G) = 3{,}8 \cdot 10^{-4}$.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{quantum_noise}
+\caption{Verjetnost uspeha v odvisnosti od napake vrat.}
+\label{g29:fig:sum-a}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{signal_vs_epsG}
+\caption{Delež ohranjenega signala v odvisnosti od pričakovanega števila napak $\varepsilon G$.}
+\label{g29:fig:sum-b}
+\end{subfigure}
+\caption{Vpliv šuma: (a) simulacija za $N = 15$ (povprečje treh semen) s prilagojeno enačbo~\eqref{g29:eq:signal}, (b) simulacija in meritve na kvantnem procesorju \texttt{ibm\_kingston} (šest za vsako vezje). Pri meritvah je $\varepsilon = 1{,}85 \cdot 10^{-3}$ mediana napake dvokubitnih vrat procesorja, $G$ pa število dvokubitnih vrat po prevajanju za \texttt{ibm\_kingston}: 30\,888 za binarno in 795 za matrično vezje.}
+\label{g29:fig:sum}
+\end{figure}
+
+\runinhead{Kvantni procesor IBM.} Tabela~\ref{g29:tab:ibm} povzema po šest meritev obeh vezij na procesorju \texttt{ibm\_kingston}, katerega mediana napake dvokubitnih vrat je bila oba dneva $1{,}85 \cdot 10^{-3}$. Binarno vezje je doseglo $p_s = 0{,}214 \pm 0{,}002$, kar je le malo nad $p_\text{šum} = 0{,}188$ ($S = 0{,}05$). Tudi to ni signal: kubiti med dolgim vezjem spontano prehajajo iz stanja $\ket{1}$ v $\ket{0}$, zato procesor pogosteje vrne izide z manj enicami, dva od treh uspešnih izidov, \texttt{0100} in \texttt{1000}, pa imata le eno enico. Če bi bila pogostost izida odvisna le od števila enic v njem, bi bil $p_s$ okoli 0,22, torej celo nekoliko večji od izmerjenega. Šum pričakujemo: vezje ima po prevajanju za \texttt{ibm\_kingston} $G = 30\,888$ dvokubitnih vrat, zato je pričakovano število napak v eni ponovitvi $\varepsilon G \approx 57$, enačba~\eqref{g29:eq:signal} pa napove $S \approx e^{-0{,}14 \cdot 57} \approx 3 \cdot 10^{-4}$, torej le šum. Matrično vezje da jasne vrhove pri $y \in \{0, 4, 8, 12\}$, ki skupaj obsegajo povprečno 89\,\% ponovitev, in ohrani 76\,\% signala ($S = 0{,}76 \pm 0{,}02$). Krivulja, prilagojena simulaciji, pri $\varepsilon G = 1{,}47$ napove 81\,\% (slika~\ref{g29:fig:sum-b}). Ker model šuma upošteva le dvokubitna vrata, je to le okvirno ujemanje.
+
+\begin{table}[htbp]
+\caption{Meritve na procesorju \texttt{ibm\_kingston} 19. in 21.~11.~2026 ($N = 15$, $a = 7$, $t = 4$, $p_\text{id} = 0{,}750$, $p_\text{šum} = 0{,}188$). Vsako vezje smo izmerili šestkrat s po 4096 ponovitvami. Vrednosti $p_s$ in $S$ so povprečje in standardni odklon šestih meritev, čas QPU pa je čas izvajanja ene meritve na kvantnem procesorju.}
+\label{g29:tab:ibm}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lrrr}
+\toprule
+množilnik & $p_s$ & $S$ & čas QPU \\
+\midrule
+binarni & $0{,}214 \pm 0{,}002$ & $0{,}046 \pm 0{,}003$ & 14\,s \\
+matrični & $0{,}613 \pm 0{,}009$ & $0{,}756 \pm 0{,}017$ & 4\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\runinhead{Napad z grobo silo.} Čas napada se podvoji na vsaka dva dodatna bita (izmerjeno 1,95, slika~\ref{g29:fig:klasicno-a}), saj preizkušamo delitelje do $\sqrt{N} \approx 2^{n/2}$. Za 52-bitni ključ potrebuje 0,58\,s. Z 12 procesi je 4,1-krat hitrejši kot z enim (slika~\ref{g29:fig:klasicno-b}). Ta pohitritev velja le za naš prenosnik: njegov procesor ima dve zmogljivi jedri z dvema nitma in osem precej počasnejših varčnih jeder, zato 12 procesov ne teče na 12 enakovrednih jedrih. Neodvisno računsko breme se pospeši podobno (3,6-krat), zato omejitev izvira iz procesorja in ne iz napada.
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{size}
+\caption{Čas v odvisnosti od velikosti ključa.}
+\label{g29:fig:klasicno-a}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{cores}
+\caption{Pohitritev na 52-bitnih ključih.}
+\label{g29:fig:klasicno-b}
+\end{subfigure}
+\caption{Napad z grobo silo: (a) mediana časa za razbitje uravnoteženih ključev, (b) pohitritev v odvisnosti od števila procesov v primerjavi z neodvisnim bremenom na procesorju z 2 zmogljivima in 8 varčnimi jedri.}
+\label{g29:fig:klasicno}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.72\textwidth]{crossover}
+\caption{Čas za razbitje v odvisnosti od števila bitov $n$. Točke: izmerjeni časi napada z grobo silo in ocene za Shorov algoritem iz vezij, prevedenih za model \texttt{ibm\_brisbane}. Črte: ekstrapolaciji obeh prilagoditev in GNFS, umerjen na RSA-250~\cite{g29:lenstra1990,g29:rsa250}. Krivulja Shorovega algoritma predpostavlja vrata brez napak. Obe osi sta logaritemski, zato je polinomski čas Shorovega algoritma skoraj premica. Navpične črte označujejo RSA-250 (829 bitov, zelena točka je izmerjeni čas razstavitve, 2700 let enega jedra) ter ključa z 2048 in 4096 biti, pri katerih bi naša izvedba Shorovega algoritma potrebovala $2{,}4 \cdot 10^4$ in $6{,}0 \cdot 10^5$ let. Ti časi veljajo le za naš neučinkovit množilnik, učinkovitejše izvedbe pa bi 2048-bitni ključ razstavile v manj kot tednu~\cite{g29:gidney2025} (razdelek~\ref{g29:sec:razprava}).}
+\label{g29:fig:primerjava}
+\end{figure}
+
+\runinhead{Primerjava.} Na logaritemskih oseh slike~\ref{g29:fig:primerjava} je polinomski čas Shorovega algoritma skoraj premica, eksponentni čas napada z grobo silo pa strmo narašča. Če predpostavimo vrata brez napak in čas ponovitve ekstrapoliramo kot $n^{4{,}7}$, je Shorov algoritem hitrejši od napada z grobo silo od 89 bitov naprej, od GNFS na enem jedru od 744 bitov in od GNFS na $10^6$ jedrih od 1412 bitov naprej. Milijonkrat več jeder premakne presečišče z GNFS za približno 670 bitov. Da bi vezje pri 89 bitih ohranilo vsaj polovico signala, mora veljati $\kappa \varepsilon G \le \ln 2$, torej $\varepsilon \lesssim 2 \cdot 10^{-11}$ pri $\kappa = 0{,}14$ oziroma $3 \cdot 10^{-12}$ pri $\kappa = 1$, kar je osem do devet velikostnih redov manj od današnjih napak. Pri 2048 bitih bi morala biti napaka med $10^{-18}$ in $10^{-17}$, kar je 14 do 15 velikostnih redov manj in je dosegljivo le s kvantnim popravljanjem napak. Čas GNFS ocenimo z njegovo asimptotično zahtevnostjo $T = C \exp\!\big((64/9)^{1/3} (\ln N)^{1/3} (\ln \ln N)^{2/3}\big)$~\cite{g29:lenstra1990}. Popravek v eksponentu, ki pri velikem $N$ postane zanemarljiv, izpustimo, konstanto $C$ pa izberemo tako, da model za RSA-250 vrne izmerjenih 2700 let dela enega jedra. Model preverimo na 768-bitnem številu RSA-768: napove 440 let, razstavitev pa je trajala približno 2000 let~\cite{g29:kleinjung2010}, torej model čas podceni približno 4,5-krat. Če čas GNFS povečamo za ta faktor, se presečišči s Shorovim algoritmom premakneta s 744 na 684 bitov in s 1412 na 1328 bitov, zato sta točni le na približno 60 do 85 bitov.
+
+
+\section{Razprava}
+\label{g29:sec:razprava}
+
+Rezultati hipotezo večinoma potrjujejo. Pri Shorovem algoritmu velikost ključa vpliva na čas prek števila vrat, ki po ocenah iz prevedenih vezij narašča polinomsko. Napaka vrat vpliva na verjetnost uspeha, ki v simulaciji pada eksponentno s produktom $\varepsilon G$. V nasprotju s hipotezo procesor ni vrnil le šuma: dolgo binarno vezje je res dalo le šum, kratko matrično pa je ohranilo 76\,\% signala, kar se približno ujema s simulacijo. Napad z grobo silo je bil pri naših ključih veliko hitrejši, Shorov algoritem pa bi ga po ekstrapolaciji prehitel pri 89 bitih, a le z vrati brez napak. Izmerjena pohitritev z več procesi je omejena s procesorjem prenosnika, vendar tudi popolna vzporednost ne bi pomagala dosti: ker se čas podvoji na vsaka dva bita, $k$-kratna pohitritev odtehta le $2 \log_2 k$ bitov, 1000 enakovrednih jeder torej približno 20 bitov. Kubitov procesorju pri naših ključih ni zmanjkalo (uporabili smo 20 od 156), vpliva njihovega števila na čas pa nismo merili. Pri pravih ključih se razmerje obrne: današnja vrata so z napako 0,1 do 0,2\,\% (\texttt{ibm\_kingston} 0,19\,\%) že blizu predpostavk ocene za 2048 bitov~\cite{g29:gidney2025}, ta pa za popravljanje napak potrebuje okoli milijon fizičnih kubitov, več kot šesttisočkrat več od 156 kubitov procesorja \texttt{ibm\_kingston}.
+
+Meritve imajo več omejitev. Ključi imajo največ 6 bitov, čas Shorovega algoritma je ocena iz prevedenih vezij do 10 bitov, ekstrapolacija do 2048 bitov pa sega daleč čez podatke: sprememba eksponenta za 0,3 spremeni čas pri 2048 bitih desetkrat. Zvezo $e^{-\kappa\varepsilon G}$ smo preverili le pri enem simuliranem vezju in na procesorju le z enim kratkim vezjem, zato ni preverjeno, ali $\kappa$ velja tudi za velika vezja. Množenja z $a^{2^j} \equiv 1 \pmod N$ preskočimo, vendar so pri $N = 15$ in $N = 51$ vse periode potence števila 2, zato periodo razkrije že klasični izračun $a^{2^j} \bmod N$. Tudi izbira $t = 4$ za $N = 15$ upošteva znano periodo. Meritve na procesorju zato kažejo delovanje vezja, ne pa razbitja ključa brez predznanja~\cite{g29:smolin2013}. Število vrat našega binarnega množilnika narašča kot $n^{3{,}6}$, učinkovite izvedbe s seštevalniki s prenosom pa potrebujejo le $O(n^2)$ vrat na množenje~\cite{g29:vedral1996}. Seštevalniki v Fourierjevem prostoru prihranijo pomožne kubite, tako da celotno vezje potrebuje le $2n+3$ kubitov~\cite{g29:beauregard2003}, naše pa $4n+4$. Naša ocena za 2048 bitov (približno 24\,000 let tudi brez napak) je zato daleč od ocene manj kot tedna iz literature~\cite{g29:gidney2025}, ki vključuje tudi popravljanje napak. Napad z grobo silo je napisan v čistem Pythonu. Desetkrat hitrejša izvedba bi presečišče premaknila za približno 7 bitov.
+
+\subsection{Kaj ni delovalo}
+\label{g29:sec:neuspehi}
+
+V prvi različici binarnega množilnika smo celotno modularno seštevanje krmilili z metodo \texttt{gate.control(2)}, ki krmilna kubita doda vsem vratom v seštevalniku. Eno krmiljeno množenje za $N = 15$ je imelo 1\,342\,124 dvokubitnih vrat. Ko smo krmilna kubita dodali le vratom, ki so odvisna od konstante, se je število vrat zmanjšalo 216-krat, na 6201.
+
+Simulacija polnega šumnega modela procesorja \texttt{ibm\_brisbane} v 30 minutah ni zaključila niti 64 ponovitev, zato smo uporabili depolarizacijski šum.
+
+Prvi ključi so bili neuporabni, kar smo opazili šele, ko smo razbite ključe preverili z dešifriranjem: pri 8 od 20 ključev je veljalo $e \equiv 1 \pmod{\lambda(N)}$, 39 od 60 sporočil pa se pri šifriranju sploh ni spremenilo. Generator smo popravili in ključe ustvarili znova.
+
+
+\section{Zaključek}
+\label{g29:sec:zakljucek}
+
+Shorov algoritem je v simulaciji razbil vseh 20 poenostavljenih ključev RSA. Njegov čas z velikostjo ključa narašča polinomsko, verjetnost uspeha pa določa napaka vrat, zato smo na današnjem procesorju signal dobili le s kratkim, nerazširljivim vezjem. Napad z grobo silo je pri tako majhnih ključih veliko hitrejši, a se njegov čas podvoji na vsaka dva dodatna bita, česar več procesov ne odtehta. Delo bi nadaljevali z učinkovitejšim množilnikom, ki bi zmanjšal število vrat in kubitov, z meritvami šuma pri več velikostih vezja, s katerimi bi preverili zvezo $e^{-\kappa\varepsilon G}$, in z ublažitvijo napak (angl.\ \emph{error mitigation}) na procesorju.
+
+
+\section*{Doprinosi avtorjev}
+
+Nina Kokalj je zasnovala in implementirala Shorovo vezje ter matrični in binarni modularni množilnik. Izvedla je prve idealne in šumne simulacije ter pripravila strukturo repozitorija in teste kvantnega dela. Luka Mikić je implementiral generator ključev, napad z grobo silo in klasično obdelavo meritev z Evklidovim algoritmom ter optimiziral krmiljenje binarnega množilnika. Skupaj sta izvedla meritve časa in šuma ter meritve na procesorju IBM in napisala poročilo.
+
+\section*{Izjava o uporabi generativne umetne inteligence}
+
+Pri delu smo uporabili model Claude (Anthropic) v orodju Claude Code za pomoč pri pisanju in preverjanju kode, pripravi skript za analizo in izris grafov ter pri pripravi in pregledu besedila poročila. Vse rezultate smo preverili s testi in ponovnimi zagoni, besedilo pa pregledali in uredili.

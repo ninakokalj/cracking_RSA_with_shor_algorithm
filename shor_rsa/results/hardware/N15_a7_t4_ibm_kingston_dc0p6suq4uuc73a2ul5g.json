@@ -1,0 +1,49 @@
+{
+  "N": 15,
+  "a": 7,
+  "counting_qubits": 4,
+  "multiplier": "matrix",
+  "shots": 4096,
+  "backend": "ibm_kingston",
+  "simulator": null,
+  "optimization_level": 3,
+  "seed_transpiler": 0,
+  "submitted": "2026-11-21T12:49:54+00:00",
+  "circuit": {
+    "median_two_qubit_error": 0.0018471851710195608,
+    "qubits": 8,
+    "depth": 2780,
+    "two_qubit_gates": 795,
+    "operations": {
+      "sx": 2169,
+      "rz": 1725,
+      "cz": 795,
+      "x": 26,
+      "measure": 4
+    },
+    "duration_s": 8.558400000000158e-05,
+    "rep_delay_s": 0.00025
+  },
+  "job_id": "dc0p6suq4uuc73a2ul5g",
+  "counts": {
+    "0000": 1149,
+    "0001": 86,
+    "0010": 38,
+    "0011": 7,
+    "0100": 790,
+    "0101": 64,
+    "0110": 37,
+    "0111": 3,
+    "1000": 924,
+    "1001": 53,
+    "1010": 33,
+    "1011": 1,
+    "1100": 821,
+    "1101": 50,
+    "1110": 38,
+    "1111": 2
+  },
+  "completed": "2026-11-21T12:50:26+00:00",
+  "qpu_seconds": 4,
+  "status": "DONE"
+}
